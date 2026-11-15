@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090d18">
+<title>Qwen Video AI</title>
+<style>
+:root{color-scheme:dark;--bg:#090d18;--panel:#111a2b;--line:#26334b;--text:#f4f7ff;--muted:#9ba9c2;--accent:#7c5cff;--accent2:#22c8bd}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#1c2850 0%,var(--bg) 58%);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);display:flex;justify-content:center;padding:28px 16px}
+main{width:min(760px,100%)}header{text-align:center;padding:30px 10px 24px}.logo{width:62px;height:62px;border-radius:19px;margin:auto auto 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-size:28px;font-weight:900;box-shadow:0 12px 45px #765bff55}
+h1{font-size:clamp(28px,6vw,42px);margin:0 0 9px;letter-spacing:-1px}h1 span{background:linear-gradient(90deg,#a997ff,#62e2d4);-webkit-background-clip:text;background-clip:text;color:transparent}.sub{color:var(--muted);margin:0;font-size:15px}
+.card{background:#111a2bdd;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 24px 80px #0005}
+label{display:block;font-weight:700;margin:0 0 12px}textarea{width:100%;min-height:150px;resize:vertical;background:#0a1120;border:1px solid #30405e;border-radius:14px;color:var(--text);padding:16px;font:inherit;line-height:1.7;outline:none}textarea:focus{border-color:#8872ff;box-shadow:0 0 0 3px #8872ff22}textarea::placeholder{color:#71809b}
+.hint{color:var(--muted);font-size:12px;margin:9px 2px 18px}.btn{width:100%;border:0;border-radius:13px;padding:15px 18px;background:linear-gradient(100deg,var(--accent),#536eff);color:white;font:700 16px inherit;cursor:pointer;box-shadow:0 10px 28px #6c5cff35}.btn:disabled{opacity:.55;cursor:wait}
+.status{display:none;margin-top:18px;padding:14px;border:1px solid var(--line);background:#0b1322;border-radius:12px;color:#cbd5e8;line-height:1.6}.status.show{display:block}.spinner{display:inline-block;width:15px;height:15px;border:2px solid #64748b;border-top-color:#a997ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px;margin-left:8px}@keyframes spin{to{transform:rotate(360deg)}}
+video{display:none;width:100%;margin-top:18px;border-radius:14px;background:#000}.download{display:none;text-align:center;text-decoration:none;margin-top:12px;padding:13px;border-radius:12px;background:#123a3b;color:#8cf2e5;font-weight:700}
+footer{text-align:center;color:#7786a0;font-size:12px;padding:20px 10px;line-height:1.8}.tiny{color:#73829d;font-size:11px;margin-top:14px}
+</style>
+</head>
+<body><main>
+<header><div class="logo">Q</div><h1><span>Qwen</span> Video AI</h1><p class="sub">حوّل وصفك إلى فيديو بالذكاء الاصطناعي</p></header>
+<section class="card">
+<label for="prompt">اكتب وصف الفيديو</label>
+<textarea id="prompt" maxlength="1500" placeholder="مثال: حصان أبيض يجري على شاطئ وقت الغروب، تصوير سينمائي واقعي وحركة كاميرا ناعمة..."></textarea>
+<p class="hint">اكتب وصفًا واضحًا ومفصلًا. يمكن الكتابة بالعربية أو الإنجليزية.</p>
+<button class="btn" id="generate">✨ إنشاء الفيديو</button>
+<div class="status" id="status" role="status" aria-live="polite"></div>
+<video id="video" controls playsinline></video>
+<a class="download" id="download" download="qwen-video.mp4">⬇ تحميل الفيديو MP4</a>
+<p class="tiny">قد يستغرق الإنشاء عدة دقائق حسب ضغط مزود الخدمة وتوفر الرصيد.</p>
+</section>
+<footer>Qwen Video AI — واجهة مستقلة غير رسمية، وليست تابعة لشركة Qwen.</footer>
+</main>
+<script>
+const btn=document.getElementById('generate'), promptBox=document.getElementById('prompt');
+const statusBox=document.getElementById('status'), video=document.getElementById('video'), download=document.getElementById('download');
+let currentUrl=null;
+btn.addEventListener('click',async()=>{
+ const prompt=promptBox.value.trim();
+ if(prompt.length<5){statusBox.textContent='اكتب وصفًا أطول قليلًا للفيديو.';statusBox.classList.add('show');return;}
+ btn.disabled=true;btn.textContent='جارٍ إنشاء الفيديو...';
+ statusBox.innerHTML='<span class="spinner"></span> نرسل وصفك إلى نموذج الفيديو. قد تستغرق العملية عدة دقائق، لا تغلق الصفحة.';
+ statusBox.classList.add('show');video.style.display='none';download.style.display='none';
+ if(currentUrl)URL.revokeObjectURL(currentUrl);
+ try{
+  const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+  if(!response.ok){let msg='حدث خطأ أثناء إنشاء الفيديو.';try{const data=await response.json();msg=data.detail||msg;}catch{}throw new Error(msg);}
+  const blob=await response.blob();
+  if(!blob.size)throw new Error('وصل ملف فارغ. حاول مرة أخرى.');
+  currentUrl=URL.createObjectURL(blob);video.src=currentUrl;video.style.display='block';
+  download.href=currentUrl;download.style.display='block';
+  statusBox.textContent='تم إنشاء الفيديو بنجاح! يمكنك مشاهدته أو تحميله.';
+ }catch(err){statusBox.textContent=err.message||'تعذر الاتصال بالخدمة. حاول مرة أخرى.';}
+ finally{btn.disabled=false;btn.textContent='✨ إنشاء الفيديو';}
+});
+</script></body></html>
